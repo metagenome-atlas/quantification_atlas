@@ -1,0 +1,14 @@
+threads: 8
+
+references:
+  species: "genomes/"
+
+samples:
+  sample1: /Users/silas/Documents/GitHub/example_data/reads/test/sample1.fastq.gz
+  sample2: /Users/silas/Documents/GitHub/example_data/reads/test/sample2.fastq.gz
+
+translate: false
+
+k:
+  aa: "9,12"
+  nt: "32,24"

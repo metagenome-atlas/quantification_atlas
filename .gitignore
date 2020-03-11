@@ -1,0 +1,4 @@
+.test/
+!.test/test.sh
+!.test/genomes/*
+!.test/genomes
