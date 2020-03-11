@@ -8,7 +8,7 @@ rule sketch_ref:
     input:
         lambda wildcards: config['references'][wildcards.ref]
     output:
-        out="bbsketch/{ref}_{NTorAA}.sketch.gz"
+        out="bbsketch/reference/{ref}_{NTorAA}.sketch.gz"
     params:
         k= lambda wildcards: config['k'][wildcards.NTorAA],
         translate=lambda wildcards: wildcards.NTorAA=='aa',
@@ -27,24 +27,48 @@ rule sketch_ref:
     script:
         "../scripts/runBB.py"
 
-def get_qc_reads(wildcards):
-
-    return config['samples'][wildcards.sample]
-
-rule sketch_sample:
+rule merge_pairs:
     input:
-        input=get_qc_reads
+        lambda wildcards: get_quality_controlled_reads_(wildcards,sampleTable,['R1','R2'])
     output:
-        out="bbsketch/{sample}_{NTorAA}.sketch.gz"
+        outmerged="{sample}/reads/merged_me.fastq.gz",
+        outu="{sample}/reads/merged_R1.fastq.gz",
+        outu2="{sample}/reads/merged_R2.fastq.gz"
+    threads:
+        config["threads"]
     params:
+        command="bbmerge.sh"
+    resources:
+        time= 10
+    log:
+        "logs/bbsketch/merge/{sample}.log"
+    benchmark:
+        "logs/benchmark/bbsketch/merge_{sample}.txt"
+    conda:
+        "../envs/bbmap.yaml"
+    threads:
+        config['threads']
+    script:
+        "../scripts/runBB.py"
+
+
+
+rule sketch_paired_sample:
+    input:
+        rules.merge_pairs.output,
+        lambda wc: get_quality_controlled_reads_(wc,sampleTable,['se'])
+    output:
+        out="bbsketch/samples/{sample}_{NTorAA}.sketch.gz"
+    params:
+        input= lambda wc, input: ','.join(input),
         k= lambda wildcards: config['k'][wildcards.NTorAA],
         translate=lambda wildcards: wildcards.NTorAA=='aa',
         overwrite=True,
         command=f"bbsketch.sh depth depth2",
         processSSU=False,
+        minprob=0.2, # for ilumina reads
+        minkeycount=2,
         name=lambda wildcards: wildcards.sample
-    resources:
-        time= 10
     log:
         "logs/bbsketch/sketch_{sample}_{NTorAA}.log"
     benchmark:
@@ -59,10 +83,10 @@ rule sketch_sample:
 
 rule compare:
     input:
-        expand("bbsketch/{sample}_{{NTorAA}}.sketch.gz",sample=SAMPLES),
-        ref="bbsketch/{ref}_{NTorAA}.sketch.gz",
+        expand("bbsketch/samples/{sample}_{{NTorAA}}.sketch.gz",sample=SAMPLES),
+        ref="bbsketch/reference/{ref}_{NTorAA}.sketch.gz",
     output:
-        out="Results_{ref}_{NTorAA}.json"
+        out="Results_{ref}_{NTorAA}.json.gz"
     params:
         input=lambda wildcards: ','.join(expand("bbsketch/{sample}_{NTorAA}.sketch.gz",sample=SAMPLES,**wildcards)),
         k= lambda wildcards: config['k'][wildcards.NTorAA],

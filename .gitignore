@@ -1,4 +1,7 @@
 .test/
 !.test/test.sh
 !.test/genomes/*
+!.test/samples.tsv
 !.test/genomes
+rules/sample_table.smk
+__pycache__
